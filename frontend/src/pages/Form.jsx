@@ -1,152 +1,147 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
-import { CSSTransition, TransitionGroup } from 'react-transition-group';
+import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
 
 const Form = () => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+  const [messages, setMessages] = useState([
+    { sender: "ai", text: "Welcome to AURA AI ! How can I assist you today?" },
+  ]);
 
-  const sendMessage = async () => {
-    if (input.trim() === '') return;
+  const chatEndRef = useRef(null);
 
-    const userMessage = { text: input, sender: 'user' };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInput('');
+  async function buttonClicked(e) {
+    e.preventDefault();
+    const input = e.target[0].value.trim();
+    if (!input) return;
+
+    setMessages((prev) => [...prev, { sender: "human", text: input }]);
     setIsLoading(true);
 
     try {
-      const response = await axios.post('https://api.example.com/chat', { message: userMessage.text });
-      const botMessage = { text: response.data.reply, sender: 'bot' };
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
+      const response = await axios.post("http://localhost:5000/api/chat", {
+        message: input,
+      });
+
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: response.data.reply },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "⚠️ Oops! Something went wrong." },
+      ]);
+    } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        const botMessage = { text: `I received your message: "${userMessage.text}". This is a placeholder response.`, sender: 'bot' };
-        setMessages((prevMessages) => [...prevMessages, botMessage]);
-        setIsLoading(false);
-      }, 1500);
-
-    } catch (error) {
-      console.error('Error sending message:', error);
-      const errorMessage = { text: 'Sorry, I am unable to connect right now. Please try again later.', sender: 'bot', error: true };
-      setMessages((prevMessages) => [...prevMessages, errorMessage]);
-      setIsLoading(false);
+      e.target.reset();
     }
-  };
+  }
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(scrollToBottom, [messages]);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
   return (
-    <div className="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center justify-center font-sans p-4 antialiased">
-      <div className="bg-gray-800 rounded-2xl shadow-2xl overflow-hidden w-full max-w-2xl h-[80vh] flex flex-col border border-gray-700">
-        
+    <div className="relative bg-black text-gray-100 min-h-screen flex flex-col items-center justify-center font-sans p-4 overflow-hidden">
+      {/* Animated Gradient Blobs */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-10 left-10 w-72 h-72 bg-purple-600 rounded-full mix-blend-screen filter blur-2xl opacity-50 animate-fast-blob"></div>
+        <div className="absolute bottom-10 right-20 w-96 h-96 bg-pink-600 rounded-full mix-blend-screen filter blur-3xl opacity-40 animate-fast-blob animation-delay-2000"></div>
+        <div className="absolute top-1/3 left-1/2 w-80 h-80 bg-blue-500 rounded-full mix-blend-screen filter blur-2xl opacity-40 animate-fast-blob animation-delay-4000"></div>
+      </div>
+
+      {/* Chat Box */}
+      <div className="relative z-10 bg-gray-950/70 backdrop-blur-lg  rounded-2xl shadow-xl overflow-hidden w-full max-w-2xl h-[80vh] flex flex-col border border-gray-800">
         {/* Header */}
-        <div className="bg-gray-700 p-4 border-b border-gray-600 flex items-center">
-          <svg className="w-8 h-8 text-indigo-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
+        <div className="bg-gray-900/90 p-4 border-b border-gray-700 flex items-center">
+          <svg
+            className="w-8 h-8 text-purple-400 mr-3"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
             <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 000 2h6a1 1 0 100-2H7zm1 4a1 1 0 100 2h4a1 1 0 100-2H8z" />
           </svg>
-          <h1 className="text-xl font-bold text-white">AURA AI</h1>
+          <h1 className="text-xl font-bold text-purple-400">AURA AI</h1>
         </div>
 
-        {/* Message Container */}
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-          <TransitionGroup className="space-y-4">
-            {messages.map((msg, index) => (
-              <CSSTransition
-                key={index}
-                timeout={300}
-                classNames="message"
-              >
-                <div className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`rounded-xl p-3 max-w-[75%] shadow-lg ${
-                    msg.sender === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'
-                  }`}>
-                    {msg.text}
-                  </div>
-                </div>
-              </CSSTransition>
-            ))}
-            <CSSTransition
-              in={isLoading}
-              timeout={300}
-              classNames="message"
-              unmountOnExit
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`flex ${
+                msg.sender === "human" ? "justify-end" : "justify-start"
+              }`}
             >
-              <div className="flex justify-start">
-                <div className="rounded-xl p-3 max-w-[75%] shadow-lg bg-gray-700 text-gray-200 rounded-bl-none animate-pulse">
-                  <div className="w-12 h-4 bg-gray-600 rounded"></div>
-                </div>
+              <div
+                className={`rounded-2xl p-3 max-w-[75%] shadow-md text-sm ${
+                  msg.sender === "human"
+                    ? "bg-gradient-to-r from-purple-600 to-indigo-500 text-white shadow-indigo-500/30"
+                    : "bg-gradient-to-r from-black-800 to-gray-700 text-gray-200 shadow-gray-700/30"
+                }`}
+              >
+                {msg.text}
               </div>
-            </CSSTransition>
-          </TransitionGroup>
-          <div ref={messagesEndRef} />
+            </div>
+          ))}
+
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="rounded-2xl p-3 max-w-[75%] bg-gray-800 text-gray-300 animate-pulse">
+                <div className="w-16 h-4 bg-gray-600 rounded"></div>
+              </div>
+            </div>
+          )}
+          <div ref={chatEndRef} />
         </div>
 
-        {/* Input area */}
-        <div className="p-4 border-t border-gray-600 bg-gray-800 flex items-center">
-          <textarea
-            className="flex-1 resize-none bg-gray-700 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
-            rows="1"
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyPress}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={isLoading}
-            className="ml-3 p-3 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-500 transition-colors duration-200 transform hover:scale-105 active:scale-95 disabled:bg-gray-600 disabled:transform-none"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
-        </div>
-
+        {/* Input */}
+        <form onSubmit={buttonClicked}>
+          <div className="p-4 border-t border-gray-800 bg-gray-900/80 flex items-center backdrop-blur-md">
+            <textarea
+              className="flex-1 resize-none bg-gray-800/60 text-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 overflow-hidden max-h-[10rem] placeholder-gray-400"
+              rows="1"
+              placeholder="Type your message..."
+            />
+            <button
+              className="ml-3 p-3 rounded-full bg-purple-600 text-white shadow-lg hover:bg-purple-500 transition-all transform hover:scale-110 active:scale-95 disabled:bg-gray-600"
+              disabled={isLoading}
+            >
+              <svg
+                className="rotate-180"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                height="1.2em"
+                width="1.2em"
+              >
+                <path d="M22 2v20l-22-10zm-19 10l17 8.5-2-8.5-15-2-0 0zm17-0.5l-17-2.5 15-2.5-0 5z" />
+              </svg>
+            </button>
+          </div>
+        </form>
       </div>
-      
-      {/* Custom styles for the scrollbar and transitions */}
+
+      {/* Custom Styles */}
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #374151; /* gray-700 */
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #111827; }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: #4b5563; /* gray-600 */
-          border-radius: 20px;
-          border: 2px solid #374151; /* gray-700 */
+          background-color: #374151;
+          border-radius: 10px;
         }
-        
-        .message-enter {
-          opacity: 0;
-          transform: translateY(20px);
+
+        @keyframes fast-blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          25% { transform: translate(40px, -60px) scale(1.15); }
+          50% { transform: translate(-30px, 30px) scale(0.9); }
+          75% { transform: translate(20px, 50px) scale(1.1); }
+          100% { transform: translate(0px, 0px) scale(1); }
         }
-        .message-enter-active {
-          opacity: 1;
-          transform: translateY(0);
-          transition: opacity 300ms, transform 300ms;
+        .animate-fast-blob {
+          animation: fast-blob 10s infinite ease-in-out;
         }
-        .message-exit {
-          opacity: 1;
-        }
-        .message-exit-active {
-          opacity: 0;
-          transition: opacity 300ms;
-        }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
       `}</style>
     </div>
   );
